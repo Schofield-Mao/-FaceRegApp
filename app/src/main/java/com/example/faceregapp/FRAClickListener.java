@@ -3,10 +3,12 @@ package com.example.faceregapp;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.os.Environment;
 import android.provider.ContactsContract;
+import android.util.DisplayMetrics;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
@@ -27,6 +29,7 @@ public class FRAClickListener implements View.OnClickListener {
     CameraPreview mCameraPreview;
     Camera.PictureCallback mPictureCallback;
     Context mContext;
+
     FRAClickListener(CameraPreview cameraPreview, Context context){
         mContext = context;
         mCameraPreview = cameraPreview;
@@ -57,7 +60,7 @@ public class FRAClickListener implements View.OnClickListener {
                 }
 
             }
-        };
+    };
     }
 
     @Override

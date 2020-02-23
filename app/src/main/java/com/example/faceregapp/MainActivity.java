@@ -3,6 +3,7 @@ package com.example.faceregapp;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.hardware.Camera;
 import android.os.Bundle;
 
@@ -76,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void init(){
         Camera open = Camera.open();    //初始化 Camera对象
-        mPreview = new CameraPreview(this, getApplicationContext(), open);
+        mPreview = new CameraPreview(this, getApplicationContext(), open, getResources());
         camera_preview = findViewById(R.id.camera_preview);
         camera_preview.addView(mPreview);
 

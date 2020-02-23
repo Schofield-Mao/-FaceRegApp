@@ -4,13 +4,16 @@ package com.example.faceregapp;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.ImageFormat;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.hardware.Camera;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.List;
@@ -23,17 +26,26 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private SurfaceHolder mHolder;
     private Camera mCamera;
     private Activity mActivity;
-    public CameraPreview(Activity activity, Context context, Camera camera) {
+    CameraUtil cameraInstance;
+    int screenWidth;
+    int screenHeight;
+    int picWidth;
+    int picHeight;
+    Resources mResource;
+    public CameraPreview(Activity activity, Context context, Camera camera, Resources resources) {
         super(context);
         //初始化Camera对象
         mCamera = camera;
         //得到SurfaceHolder对象
         mHolder = getHolder();
         mActivity = activity;
+        mResource = resources;
         //添加回调，得到Surface的三个声明周期方法
         mHolder.addCallback(this);
+        initData();
+        setupCamera(mCamera);
         // deprecated setting, but required on Android versions prior to 3.0
-        //mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        //mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFER
     }
 
     @Override
@@ -145,4 +157,42 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             mCamera = null;
         }
     }
+
+    private void setupCamera(Camera camera) {
+        Camera.Parameters parameters = camera.getParameters();
+        if (parameters.getSupportedFocusModes().contains(
+                Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+        }
+        //根据屏幕尺寸获取最佳 大小
+        Camera.Size previewSize = cameraInstance.getPicPreviewSize(parameters.getSupportedPreviewSizes(),
+                screenHeight, screenWidth);
+        parameters.setPreviewSize(previewSize.width, previewSize.height);
+
+        Camera.Size pictrueSize = cameraInstance.getPicPreviewSize(parameters.getSupportedPictureSizes(),
+                screenHeight,screenWidth);
+        parameters.setPictureSize(pictrueSize.width, pictrueSize.height);
+        camera.setParameters(parameters);
+//        picHeight = (screenWidth * pictrueSize.width) / pictrueSize.height;
+        picWidth = pictrueSize.width;
+        picHeight = pictrueSize.height;
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(screenWidth,
+                (screenWidth * pictrueSize.width) / pictrueSize.height);
+        setLayoutParams(params);
+    }
+
+    public static void showToast(Context context,String txt){
+        int duration = Toast.LENGTH_SHORT;
+        Toast toast = Toast.makeText(context, txt, duration);
+        toast.show();
+    }
+
+    protected void initData() {
+        cameraInstance = CameraUtil.getInstance();
+        DisplayMetrics dm = mResource.getDisplayMetrics();
+        screenWidth = dm.widthPixels;
+        screenHeight = dm.heightPixels;
+    }
+
+
 }
