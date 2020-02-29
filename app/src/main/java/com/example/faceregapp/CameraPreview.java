@@ -11,6 +11,7 @@ import android.graphics.ImageFormat;
 import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -51,6 +52,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         mHolder.addCallback(this);
         initData();
         setupCamera(mCamera);
+        showToast(getContext(),screenWidth+"|"+screenHeight);
         // deprecated setting, but required on Android versions prior to 3.0
         //mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFER
     }
@@ -174,6 +176,10 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
         }
         //根据屏幕尺寸获取最佳 大小
+//          Camera.Size previewSize =  parameters.getPreviewSize();
+//          Camera.Size pictureSize =  parameters.getPictureSize();
+//          String txt = "log:"+previewSize.width+"|"+previewSize.height+"|"+pictureSize.width+pictureSize.height;
+//          showToast(getContext(),"");
         Camera.Size previewSize = cameraInstance.getPicPreviewSize(parameters.getSupportedPreviewSizes(),
                 screenHeight, screenWidth);
         parameters.setPreviewSize(previewSize.width, previewSize.height);
@@ -182,11 +188,14 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                 screenHeight,screenWidth);
         parameters.setPictureSize(pictrueSize.width, pictrueSize.height);
         camera.setParameters(parameters);
+
         picHeight = (screenWidth * pictrueSize.width) / pictrueSize.height;
         picWidth = pictrueSize.width;
         picHeight = pictrueSize.height;
+
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(screenWidth,
                 (screenWidth * pictrueSize.width) / pictrueSize.height);
+        params.gravity = Gravity.CENTER;
         setLayoutParams(params);
     }
 
