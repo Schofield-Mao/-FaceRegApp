@@ -33,34 +33,6 @@ public class FRAClickListener implements View.OnClickListener {
     FRAClickListener(CameraPreview cameraPreview, Context context){
         mContext = context;
         mCameraPreview = cameraPreview;
-        mPictureCallback = new Camera.PictureCallback() {
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-                FileOutputStream fos = null;
-                String mFilePath = Environment.getExternalStorageDirectory().getPath() + File.separator+
-                        "DCIM"+File.separator + "FRG_"+ System.currentTimeMillis() +".png";
-                File tempFile = new File(mFilePath);
-                try {
-                    fos = new FileOutputStream(tempFile);
-                    fos.write(data);
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    //实现连续拍多张的效果
-//                mCamera.startPreview();
-                    if (fos != null) {
-                        try {
-                            fos.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-
-            }
-    };
     }
 
     @Override
@@ -68,18 +40,13 @@ public class FRAClickListener implements View.OnClickListener {
         switch(v.getId()){
             case R.id.cameraBtn:
                 showToast(mContext,"button clike");
-                Camera.Parameters parameters = mCameraPreview.getmCamera().getParameters();
-                parameters.setPictureFormat(ImageFormat.JPEG);
-                parameters.setPreviewSize(800, 400);
-                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-                mCameraPreview.getmCamera().autoFocus(new Camera.AutoFocusCallback() {
-                    @Override
-                    public void onAutoFocus(boolean success, Camera camera) {
-                        if (success) {
-                            camera.takePicture(null, null, mPictureCallback);
-                        }
-                    }
-                });
+                //Camera.Parameters parameters = mCameraPreview.getmCamera().getParameters();
+                //parameters.setPictureFormat(ImageFormat.JPEG);
+                //parameters.setPreviewSize(800, 400);
+                //parameters.setPictureSize(1024,768);
+                //parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+                mCameraPreview.takePicture();
+
                 break;
             case R.id.fab:
                 mCameraPreview.switchCamera();

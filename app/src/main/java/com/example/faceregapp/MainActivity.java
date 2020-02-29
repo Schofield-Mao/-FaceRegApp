@@ -76,8 +76,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void init(){
-        Camera open = Camera.open();    //初始化 Camera对象
-        mPreview = new CameraPreview(this, getApplicationContext(), open, getResources());
+        mPreview = new CameraPreview(this, getApplicationContext(), getResources());
         camera_preview = findViewById(R.id.camera_preview);
         camera_preview.addView(mPreview);
 

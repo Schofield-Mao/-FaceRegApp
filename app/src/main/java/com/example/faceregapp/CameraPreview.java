@@ -5,7 +5,10 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Surface;
@@ -15,6 +18,9 @@ import android.hardware.Camera;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -31,11 +37,12 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     int screenHeight;
     int picWidth;
     int picHeight;
+    private boolean safeToTakePicture = false;
     Resources mResource;
-    public CameraPreview(Activity activity, Context context, Camera camera, Resources resources) {
+    public CameraPreview(Activity activity, Context context, Resources resources) {
         super(context);
         //初始化Camera对象
-        mCamera = camera;
+        mCamera = Camera.open(cameraId);
         //得到SurfaceHolder对象
         mHolder = getHolder();
         mActivity = activity;
@@ -55,6 +62,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             mCamera.setPreviewDisplay(holder);
             //开启预览效果
             startPreview();
+            safeToTakePicture = true;
         } catch (IOException e) {
 //            Log.d(TAG, "Error setting camera preview: " + e.getMessage());
         }
@@ -87,7 +95,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         }
     }
 
-    private int cameraId = 0;
+    private int cameraId = 1;
     //切换摄像头
     public void switchCamera(){
         int cameraCount = Camera.getNumberOfCameras();//得到摄像头的个数
@@ -104,6 +112,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             cameraId = 1;
         }
         mCamera = Camera.open(cameraId);
+        setupCamera(mCamera);
         try {
             mCamera.setPreviewDisplay(mHolder);
         } catch (IOException e) {
@@ -145,7 +154,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     }
 
     public void startPreview(){
-        setCameraDisplayOrientation(mActivity, cameraId, mCamera);
+        cameraInstance.setCameraDisplayOrientation(mActivity,cameraId,mCamera);
         mCamera.startPreview();
     }
 
@@ -173,7 +182,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                 screenHeight,screenWidth);
         parameters.setPictureSize(pictrueSize.width, pictrueSize.height);
         camera.setParameters(parameters);
-//        picHeight = (screenWidth * pictrueSize.width) / pictrueSize.height;
+        picHeight = (screenWidth * pictrueSize.width) / pictrueSize.height;
         picWidth = pictrueSize.width;
         picHeight = pictrueSize.height;
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(screenWidth,
@@ -194,5 +203,60 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         screenHeight = dm.heightPixels;
     }
 
+    public void takePicture(){
+        try{
+            mCamera.autoFocus(new Camera.AutoFocusCallback() {
+                @Override
+                public void onAutoFocus(boolean success, Camera camera) {
+                    if (success) {
+                        if(safeToTakePicture) {
+                            camera.takePicture(null, null, onPictureTaken);
+                            safeToTakePicture = false;
+                        }else{
+                            showToast(getContext(), "camera is not ready");
+                        }
+                   }
+               }
+            });
+        }catch (Exception ex){
+            showToast(getContext(), ex.getMessage());
+        }
+    }
+
+    private Camera.PictureCallback onPictureTaken = new Camera.PictureCallback() {
+        @Override
+        public void onPictureTaken(byte[] data, Camera camera) {
+            startPreview();
+
+            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+            bitmap = CameraUtil.getInstance().setTakePicktrueOrientation(cameraId, bitmap);
+            FileOutputStream fos = null;
+            String mFilePath = Environment.getExternalStorageDirectory().getPath() + File.separator+
+                    "DCIM"+File.separator+"Camera"+File.separator + "FRG_"+ System.currentTimeMillis() +".png";
+            File tempFile = new File(mFilePath);
+            try {
+                fos = new FileOutputStream(tempFile);
+                if(bitmap.compress(Bitmap.CompressFormat.JPEG,100,fos)){
+                    fos.flush();
+                }
+                showToast(getContext(),"rotate image");
+                //fos.write(data);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (fos != null) {
+                    try {
+                        fos.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            //finished saving picture
+            safeToTakePicture = true;
+        }
+    };
 
 }
