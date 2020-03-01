@@ -12,7 +12,23 @@
         app:layout_constraintTop_toTopOf="parent"
         android:id="@+id/camera_preview"
         android:layout_width="match_parent"
-        android:layout_height="500dp" />
+        android:layout_height="match_parent" >
+
+<!--        <com.example.faceregapp.FaceView-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="match_parent"/>-->
+
+        <com.example.faceregapp.CounterView
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_centerInParent="true" />
+
+        <com.example.faceregapp.FaceView
+            android:id="@+id/faceView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+    </FrameLayout>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

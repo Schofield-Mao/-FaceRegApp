@@ -8,7 +8,12 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
@@ -16,20 +21,25 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.hardware.Camera;
+import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Created by allens on 2017/3/15.
  */
 
-public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
+public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, Camera.PreviewCallback{
     private SurfaceHolder mHolder;
     private Camera mCamera;
     private Activity mActivity;
@@ -39,8 +49,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     int picWidth;
     int picHeight;
     private boolean safeToTakePicture = false;
-    Resources mResource;
-    public CameraPreview(Activity activity, Context context, Resources resources) {
+    public Resources mResource;
+    public FaceView mFaceView;
+    public CameraPreview(Activity activity, Context context, Resources resources, FaceView faceView) {
         super(context);
         //初始化Camera对象
         mCamera = Camera.open(cameraId);
@@ -52,7 +63,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         mHolder.addCallback(this);
         initData();
         setupCamera(mCamera);
-        showToast(getContext(),screenWidth+"|"+screenHeight);
+        mFaceView = faceView;
         // deprecated setting, but required on Android versions prior to 3.0
         //mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFER
     }
@@ -80,7 +91,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         mCamera.stopPreview();
         //重新设置预览效果
         try {
-            mCamera.setPreviewDisplay(mHolder);
+            mCamera.setPreviewDisplay(holder);
+            showToast(getContext(),"set preview callback");
+            mCamera.setPreviewCallback(this);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -158,6 +171,26 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     public void startPreview(){
         cameraInstance.setCameraDisplayOrientation(mActivity,cameraId,mCamera);
         mCamera.startPreview();
+        mCamera.startFaceDetection();
+        mCamera.setFaceDetectionListener(new Camera.FaceDetectionListener() {
+            @Override
+            public void onFaceDetection(Camera.Face[] faces, Camera camera) {
+                //faces[0].rect;
+                //showToast(getContext(),"on face detect");
+                if(mFaceView == null){
+                    showToast(getContext(),"face view null");
+                }
+                ArrayList<Rect> res = new ArrayList<>();
+                if(faces != null && faces.length != 0 && mFaceView != null){
+                    for(int i=0;i<faces.length;i++) {
+                        res.add(faces[i].rect);
+                    }
+                    mFaceView.setFaces(res);
+                    showToast(getContext(),"on face detect");
+                }
+//                showToast(getContext(),"face detect");
+            }
+        });
     }
 
     public void releaseCamera(){
@@ -176,10 +209,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
         }
         //根据屏幕尺寸获取最佳 大小
-//          Camera.Size previewSize =  parameters.getPreviewSize();
-//          Camera.Size pictureSize =  parameters.getPictureSize();
-//          String txt = "log:"+previewSize.width+"|"+previewSize.height+"|"+pictureSize.width+pictureSize.height;
-//          showToast(getContext(),"");
         Camera.Size previewSize = cameraInstance.getPicPreviewSize(parameters.getSupportedPreviewSizes(),
                 screenHeight, screenWidth);
         parameters.setPreviewSize(previewSize.width, previewSize.height);
@@ -219,7 +248,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                 public void onAutoFocus(boolean success, Camera camera) {
                     if (success) {
                         if(safeToTakePicture) {
-                            camera.takePicture(null, null, onPictureTaken);
+                            mCamera.takePicture(null, null, onPictureTaken);
                             safeToTakePicture = false;
                         }else{
                             showToast(getContext(), "camera is not ready");
@@ -268,4 +297,13 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         }
     };
 
+    @Override
+    public void onPreviewFrame(byte[] data, Camera camera) {
+        //try {
+            //showToast(getContext(),"processing frame");
+            //Thread.sleep(500);
+        //} catch (InterruptedException e) {
+        //    e.printStackTrace();
+        //}
+    }
 }

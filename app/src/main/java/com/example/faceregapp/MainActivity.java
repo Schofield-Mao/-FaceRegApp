@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         if(mPreview != null)
             mPreview.releaseCamera();
-            mPreview = null;
+        mPreview = null;
     }
 
     @Override
@@ -76,9 +76,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void init(){
-        mPreview = new CameraPreview(this, getApplicationContext(), getResources());
+        mPreview = new CameraPreview(this, getApplicationContext(), getResources(),(FaceView) findViewById(R.id.faceView));
         camera_preview = findViewById(R.id.camera_preview);
         camera_preview.addView(mPreview);
+        //camera_preview.addView(mPreview.mFaceView);
 
         fraClickListener = new FRAClickListener(mPreview, this);
         btnCamera = findViewById(R.id.cameraBtn);
