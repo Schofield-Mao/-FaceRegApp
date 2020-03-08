@@ -78,7 +78,7 @@ public class CameraUtil {
      * @param cameraId cameraId
      * @param camera   camera
      */
-    public void setCameraDisplayOrientation(Activity activity,
+    public int setCameraDisplayOrientation(Activity activity,
                                             int cameraId, Camera camera) {
         android.hardware.Camera.CameraInfo info =
                 new android.hardware.Camera.CameraInfo();
@@ -111,6 +111,7 @@ public class CameraUtil {
         }
         //设置角度
         camera.setDisplayOrientation(result);
+        return result;
     }
 
 

@@ -51,6 +51,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private boolean safeToTakePicture = false;
     public Resources mResource;
     public FaceView mFaceView;
+    public int oriantation;
     public CameraPreview(Activity activity, Context context, Resources resources, FaceView faceView) {
         super(context);
         //初始化Camera对象
@@ -169,7 +170,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     }
 
     public void startPreview(){
-        cameraInstance.setCameraDisplayOrientation(mActivity,cameraId,mCamera);
+        oriantation = cameraInstance.setCameraDisplayOrientation(mActivity,cameraId,mCamera);
         mCamera.startPreview();
         mCamera.startFaceDetection();
         mCamera.setFaceDetectionListener(new Camera.FaceDetectionListener() {
@@ -180,15 +181,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                 if(mFaceView == null){
                     showToast(getContext(),"face view null");
                 }
-                ArrayList<Rect> res = new ArrayList<>();
-                if(faces != null && faces.length != 0 && mFaceView != null){
-                    for(int i=0;i<faces.length;i++) {
-                        res.add(faces[i].rect);
-                    }
-                    mFaceView.setFaces(res);
-                    showToast(getContext(),"on face detect");
-                }
-//                showToast(getContext(),"face detect");
+                ArrayList<RectF> res = mFaceView.transForm(new ArrayList<Camera.Face>(Arrays.asList(faces)),cameraId,oriantation,screenWidth, screenHeight);
+                mFaceView.setFaces(res);
+//                showToast(getContext(),"on face detect");
             }
         });
     }
