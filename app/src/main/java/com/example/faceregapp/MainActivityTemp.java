@@ -43,6 +43,9 @@ public class MainActivityTemp extends AppCompatActivity {
                             .Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     0);//自定义的code
         }
+
+
+
     }
 
     public static void showToast(Context context,String txt){
