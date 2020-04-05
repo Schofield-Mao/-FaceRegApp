@@ -15,6 +15,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfRect;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
@@ -35,6 +36,7 @@ import android.view.WindowManager;
 import android.view.View.OnTouchListener;
 import android.view.SurfaceView;
 
+import static org.opencv.core.Core.FONT_HERSHEY_SIMPLEX;
 import static org.opencv.core.Core.flip;
 
 public class MainActivity extends Activity implements OnTouchListener, CvCameraViewListener2 {
@@ -54,7 +56,7 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
     public static final int        JAVA_DETECTOR       = 0;
     public static final int        NATIVE_DETECTOR     = 1;
 
-    private MenuItem mItemFace50;
+    private MenuItem               mItemFace50;
     private MenuItem               mItemFace40;
     private MenuItem               mItemFace30;
     private MenuItem               mItemFace20;
@@ -288,8 +290,10 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
 //        }
 //
         Rect[] facesArray = faces.toArray();
-        for (int i = 0; i < facesArray.length; i++)
+        for (int i = 0; i < facesArray.length; i++) {
             Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
+            Core.putText(mRgba,"hello world", facesArray[i].tl(), FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
+        }
 
         return mRgba;
     }
