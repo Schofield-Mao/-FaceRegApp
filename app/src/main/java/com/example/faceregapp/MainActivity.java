@@ -28,46 +28,32 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.View.OnTouchListener;
 import android.view.SurfaceView;
+import android.widget.Toast;
 
 import static org.opencv.core.Core.FONT_HERSHEY_SIMPLEX;
-import static org.opencv.core.Core.flip;
 
-public class MainActivity extends Activity implements OnTouchListener, CvCameraViewListener2 {
+
+public class MainActivity extends Activity implements CvCameraViewListener2 {
     private static final String  TAG              = "MainActivity";
 
-    private boolean              mIsColorSelected = false;
     private Mat                  mRgba;
-    private Scalar               mBlobColorRgba;
-    private Scalar               mBlobColorHsv;
-    private ColorBlobDetector    mDetector;
-    private Mat                  mSpectrum;
-    private Size                 SPECTRUM_SIZE;
-    private Scalar               CONTOUR_COLOR;
-
 
     private static final Scalar    FACE_RECT_COLOR     = new Scalar(0, 255, 0, 255);
-    public static final int        JAVA_DETECTOR       = 0;
-    public static final int        NATIVE_DETECTOR     = 1;
-
-    private MenuItem               mItemFace50;
-    private MenuItem               mItemFace40;
-    private MenuItem               mItemFace30;
-    private MenuItem               mItemFace20;
-    private MenuItem               mItemType;
 
     private Mat                    mGray;
     private File                   mCascadeFile;
-    private CascadeClassifier      mJavaDetector;
-    private DetectionBasedTracker  mNativeDetector;
+    private JavaDetector mFaceDetector;
+    private JavaDetector mEyeDetector;
+    private JavaDetector mNoseDetector;
+    private JavaDetector mLeftEarDetector;
+    private JavaDetector mRightEarDetector;
+    private JavaDetector mLeftEyeDetector;
+    private JavaDetector mRightEyeDetector;
+    private JavaDetector mMouthDetector;
 
-    private int                    mDetectorType       = JAVA_DETECTOR;
     private String[]               mDetectorName;
 
     private float                  mRelativeFaceSize   = 0.2f;
@@ -79,48 +65,36 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
+                case LoaderCallbackInterface.SUCCESS: {
                     Log.i(TAG, "OpenCV loaded successfully");
+                    mFaceDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_frontalface_default),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_frontalface_default.xml");
 
-
-                    // Load native library after(!) OpenCV initialization
-                    //System.loadLibrary("detection_based_tracker");
-
-                    try {
-                        // load cascade file from application resources
-                        InputStream is = getResources().openRawResource(R.raw.lbpcascade_frontalface);
-                        File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
-                        mCascadeFile = new File(cascadeDir, "lbpcascade_frontalface.xml");
-                        FileOutputStream os = new FileOutputStream(mCascadeFile);
-
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        while ((bytesRead = is.read(buffer)) != -1) {
-                            os.write(buffer, 0, bytesRead);
-                        }
-                        is.close();
-                        os.close();
-
-                        mJavaDetector = new CascadeClassifier(mCascadeFile.getAbsolutePath());
-                        if (mJavaDetector.empty()) {
-                            Log.e(TAG, "Failed to load cascade classifier");
-                            mJavaDetector = null;
-                        } else
-                            Log.i(TAG, "Loaded cascade classifier from " + mCascadeFile.getAbsolutePath());
-
-                        //mNativeDetector = new DetectionBasedTracker(mCascadeFile.getAbsolutePath(), 0);
-
-                        cascadeDir.delete();
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        Log.e(TAG, "Failed to load cascade. Exception thrown: " + e);
-                    }
-
+                    mEyeDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_eye),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_eye.xml");
+                    mNoseDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_nose),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_mcs_nose.xml");
+                    mLeftEarDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_leftear),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_mcs_leftear.xml");
+                    mRightEarDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_rightear),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_mcs_rightear.xml");
+                    mLeftEyeDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_lefteye),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_mcs_lefteye.xml");
+                    mRightEyeDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_righteye),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_mcs_righteye.xml");
+                    mMouthDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_mouth),
+                            getDir("cascade", Context.MODE_PRIVATE),
+                            "haarcascade_mcs_mouth.xml");
                     mOpenCvCameraView.enableView();
-                    mOpenCvCameraView.setOnTouchListener(MainActivity.this);
-                } break;
+                    break;
+                }
                 default:
                 {
                     super.onManagerConnected(status);
@@ -131,9 +105,6 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
 
     public MainActivity() {
         Log.i(TAG, "Instantiated new " + this.getClass());
-        mDetectorName = new String[2];
-        mDetectorName[JAVA_DETECTOR] = "Java";
-        mDetectorName[NATIVE_DETECTOR] = "Native (tracking)";
     }
 
     /** Called when the activity is first created. */
@@ -146,7 +117,7 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
 
         setContentView(R.layout.color_blob_detection_surface_view);
 
-        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.color_blob_detection_activity_surface_view);
+        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.face_detection_activity_surface_view);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_FRONT);
         mOpenCvCameraView.setCvCameraViewListener(this);
@@ -166,7 +137,6 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
         super.onResume();
         if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            //OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_11, this, mLoaderCallback);
         } else {
             Log.d(TAG, "OpenCV library found inside package. Using it!");
@@ -182,12 +152,6 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
 
     public void onCameraViewStarted(int width, int height) {
         mRgba = new Mat(height, width, CvType.CV_8UC4);
-        mDetector = new ColorBlobDetector();
-        mSpectrum = new Mat();
-        mBlobColorRgba = new Scalar(255);
-        mBlobColorHsv = new Scalar(255);
-        SPECTRUM_SIZE = new Size(200, 64);
-        CONTOUR_COLOR = new Scalar(255,0,0,255);
         mGray = new Mat();
     }
 
@@ -196,73 +160,7 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
         mGray.release();
     }
 
-    public boolean onTouch(View v, MotionEvent event) {
-        int cols = mRgba.cols();
-        int rows = mRgba.rows();
-
-        int xOffset = (mOpenCvCameraView.getWidth() - cols) / 2;
-        int yOffset = (mOpenCvCameraView.getHeight() - rows) / 2;
-
-        int x = (int)event.getX() - xOffset;
-        int y = (int)event.getY() - yOffset;
-
-        Log.i(TAG, "Touch image coordinates: (" + x + ", " + y + ")");
-
-        if ((x < 0) || (y < 0) || (x > cols) || (y > rows)) return false;
-
-        Rect touchedRect = new Rect();
-
-        touchedRect.x = (x>4) ? x-4 : 0;
-        touchedRect.y = (y>4) ? y-4 : 0;
-
-        touchedRect.width = (x+4 < cols) ? x + 4 - touchedRect.x : cols - touchedRect.x;
-        touchedRect.height = (y+4 < rows) ? y + 4 - touchedRect.y : rows - touchedRect.y;
-
-        Mat touchedRegionRgba = mRgba.submat(touchedRect);
-
-        Mat touchedRegionHsv = new Mat();
-        Imgproc.cvtColor(touchedRegionRgba, touchedRegionHsv, Imgproc.COLOR_RGB2HSV_FULL);
-
-        // Calculate average color of touched region
-        mBlobColorHsv = Core.sumElems(touchedRegionHsv);
-        int pointCount = touchedRect.width*touchedRect.height;
-        for (int i = 0; i < mBlobColorHsv.val.length; i++)
-            mBlobColorHsv.val[i] /= pointCount;
-
-        mBlobColorRgba = converScalarHsv2Rgba(mBlobColorHsv);
-
-        Log.i(TAG, "Touched rgba color: (" + mBlobColorRgba.val[0] + ", " + mBlobColorRgba.val[1] +
-                ", " + mBlobColorRgba.val[2] + ", " + mBlobColorRgba.val[3] + ")");
-
-        mDetector.setHsvColor(mBlobColorHsv);
-
-        //Imgproc.resize(mDetector.getSpectrum(), mSpectrum, SPECTRUM_SIZE, 0, 0, Imgproc.INTER_LINEAR_EXACT);
-        Imgproc.resize(mDetector.getSpectrum(), mSpectrum, SPECTRUM_SIZE, 0, 0, Imgproc.INTER_LINEAR);
-        mIsColorSelected = true;
-
-        touchedRegionRgba.release();
-        touchedRegionHsv.release();
-
-        return false; // don't need subsequent touch events
-    }
-
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-//        mRgba = inputFrame.rgba();
-
-//        if (mIsColorSelected) {
-//            mDetector.process(mRgba);
-//            List<MatOfPoint> contours = mDetector.getContours();
-//            Log.e(TAG, "Contours count: " + contours.size());
-//            Imgproc.drawContours(mRgba, contours, -1, CONTOUR_COLOR);
-//
-//            Mat colorLabel = mRgba.submat(4, 68, 4, 68);
-//            colorLabel.setTo(mBlobColorRgba);
-//
-//            Mat spectrumLabel = mRgba.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
-//            mSpectrum.copyTo(spectrumLabel);
-//        }
-
-
         mRgba = inputFrame.rgba();
         mGray = inputFrame.gray();
 
@@ -271,38 +169,121 @@ public class MainActivity extends Activity implements OnTouchListener, CvCameraV
             if (Math.round(height * mRelativeFaceSize) > 0) {
                 mAbsoluteFaceSize = Math.round(height * mRelativeFaceSize);
             }
-            //mNativeDetector.setMinFaceSize(mAbsoluteFaceSize);
         }
-//
-        MatOfRect faces = new MatOfRect();
 
-//        if (mDetectorType == JAVA_DETECTOR) {
-            if (mJavaDetector != null)
-                mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-                        new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//        else if (mDetectorType == NATIVE_DETECTOR) {
-//            if (mNativeDetector != null)
-//                mNativeDetector.detect(mGray, faces);
-//        }
-//        else {
-//            Log.e(TAG, "Detection method is not selected!");
-//        }
-//
+        MatOfRect faces = new MatOfRect();
+        if (mFaceDetector.getDetecotr() != null) {
+            mFaceDetector.getDetecotr().detectMultiScale(mGray, faces, 1.1, 2, 2,
+                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+        }
         Rect[] facesArray = faces.toArray();
         for (int i = 0; i < facesArray.length; i++) {
             Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
-            Core.putText(mRgba,"hello world", facesArray[i].tl(), FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
+
+            //Core.putText(mRgba,"hello world", facesArray[i].tl(), FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
         }
 
+
+
+//        MatOfRect eyes = new MatOfRect();
+//        if (mEyeDetector.getDetecotr() != null) {
+//            mEyeDetector.getDetecotr().detectMultiScale(mGray, eyes, 1.1, 2, 2,
+//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+//        }
+//        Rect[] eyesArray = eyes.toArray();
+//        for (int i = 0; i < eyesArray.length; i++) {
+//            Point temp = new Point();
+//            temp.x = (eyesArray[i].tl().x + eyesArray[i].br().x)/2;
+//            temp.y = (eyesArray[i].tl().y + eyesArray[i].br().y)/2;
+//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//        }
+//
+//        MatOfRect nodes = new MatOfRect();
+//        if (mNoseDetector.getDetecotr() != null){
+//            mNoseDetector.getDetecotr().detectMultiScale(mGray, nodes, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
+//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+//        }
+//
+//        Rect[] nodesArray = nodes.toArray();
+//        for (int i = 0; i < nodesArray.length; i++) {
+//            Point temp = new Point();
+//            temp.x = (nodesArray[i].tl().x + nodesArray[i].br().x)/2;
+//            temp.y = (nodesArray[i].tl().y + nodesArray[i].br().y)/2;
+//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//        }
+//
+//        MatOfRect mouths = new MatOfRect();
+//        if (mMouthDetector.getDetecotr() != null){
+//            mMouthDetector.getDetecotr().detectMultiScale(mGray, mouths, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
+//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+//        }
+//
+//        Rect[] mouthsArray = mouths.toArray();
+//        for (int i = 0; i < mouthsArray.length; i++) {
+//            Point temp = new Point();
+//            temp.x = (mouthsArray[i].tl().x + mouthsArray[i].br().x)/2;
+//            temp.y = (mouthsArray[i].tl().y + mouthsArray[i].br().y)/2;
+//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//        }
+
+//        MatOfRect leftEar = new MatOfRect();
+//        if (mLeftEarDetector.getDetecotr() != null){
+//            mNoseDetector.getDetecotr().detectMultiScale(mGray, leftEar, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
+//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+//        }
+//
+//        Rect[] leftEarArray = leftEar.toArray();
+//        for (int i = 0; i < leftEarArray.length; i++) {
+//            Point temp = new Point();
+//            temp.x = (leftEarArray[i].tl().x + leftEarArray[i].br().x)/2;
+//            temp.y = (leftEarArray[i].tl().y + leftEarArray[i].br().y)/2;
+//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//        }
+//
+//        MatOfRect rightEar = new MatOfRect();
+//        if (mLeftEarDetector.getDetecotr() != null){
+//            mNoseDetector.getDetecotr().detectMultiScale(mGray, rightEar, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
+//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+//        }
+//
+//        Rect[] rightEarArray = rightEar.toArray();
+//        for (int i = 0; i < leftEarArray.length; i++) {
+//            Point temp = new Point();
+//            temp.x = (rightEarArray[i].tl().x + rightEarArray[i].br().x)/2;
+//            temp.y = (rightEarArray[i].tl().y + rightEarArray[i].br().y)/2;
+//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//        }
+
+//        MatOfRect leftEye = new MatOfRect();
+//        if (mLeftEarDetector.getDetecotr() != null){
+//            mNoseDetector.getDetecotr().detectMultiScale(mGray, leftEye, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
+//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+//        }
+//
+//        Rect[] leftEyeArray = leftEye.toArray();
+//        for (int i = 0; i < leftEyeArray.length; i++) {
+//            Point temp = new Point();
+//            temp.x = (leftEyeArray[i].tl().x + leftEyeArray[i].br().x)/2;
+//            temp.y = (leftEyeArray[i].tl().y + leftEyeArray[i].br().y)/2;
+//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//        }
+//
+//        MatOfRect rightEye = new MatOfRect();
+//        if (mLeftEarDetector.getDetecotr() != null){
+//            mNoseDetector.getDetecotr().detectMultiScale(mGray, rightEye, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
+//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
+//        }
+//
+//        Rect[] rightEyeArray = rightEye.toArray();
+//        for (int i = 0; i < rightEyeArray.length; i++) {
+//            Point temp = new Point();
+//            temp.x = (rightEyeArray[i].tl().x + rightEyeArray[i].br().x)/2;
+//            temp.y = (rightEyeArray[i].tl().y + rightEyeArray[i].br().y)/2;
+//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//        }
+
+
+
         return mRgba;
-    }
-
-    private Scalar converScalarHsv2Rgba(Scalar hsvColor) {
-        Mat pointMatRgba = new Mat();
-        Mat pointMatHsv = new Mat(1, 1, CvType.CV_8UC3, hsvColor);
-        Imgproc.cvtColor(pointMatHsv, pointMatRgba, Imgproc.COLOR_HSV2RGB_FULL, 4);
-
-        return new Scalar(pointMatRgba.get(0, 0));
     }
 }
