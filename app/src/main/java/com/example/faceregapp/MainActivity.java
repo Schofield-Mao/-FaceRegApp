@@ -38,24 +38,13 @@ import static org.opencv.core.Core.FONT_HERSHEY_SIMPLEX;
 
 public class MainActivity extends Activity implements CvCameraViewListener2 {
     private static final String  TAG              = "MainActivity";
-
     private Mat                  mRgba;
-
     private static final Scalar    FACE_RECT_COLOR     = new Scalar(0, 255, 0, 255);
-
     private Mat                    mGray;
-    private File                   mCascadeFile;
     private JavaDetector mFaceDetector;
     private JavaDetector mEyeDetector;
     private JavaDetector mNoseDetector;
-    private JavaDetector mLeftEarDetector;
-    private JavaDetector mRightEarDetector;
-    private JavaDetector mLeftEyeDetector;
-    private JavaDetector mRightEyeDetector;
     private JavaDetector mMouthDetector;
-
-    private String[]               mDetectorName;
-
     private float                  mRelativeFaceSize   = 0.2f;
     private int                    mAbsoluteFaceSize   = 0;
 
@@ -77,18 +66,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                     mNoseDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_nose),
                             getDir("cascade", Context.MODE_PRIVATE),
                             "haarcascade_mcs_nose.xml");
-                    mLeftEarDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_leftear),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_mcs_leftear.xml");
-                    mRightEarDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_rightear),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_mcs_rightear.xml");
-                    mLeftEyeDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_lefteye),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_mcs_lefteye.xml");
-                    mRightEyeDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_righteye),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_mcs_righteye.xml");
                     mMouthDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_mouth),
                             getDir("cascade", Context.MODE_PRIVATE),
                             "haarcascade_mcs_mouth.xml");
@@ -173,117 +150,73 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
         MatOfRect faces = new MatOfRect();
         if (mFaceDetector.getDetecotr() != null) {
-            mFaceDetector.getDetecotr().detectMultiScale(mGray, faces, 1.1, 2, 2,
+            mFaceDetector.getDetecotr().detectMultiScale(mGray, faces, 1.1, 3, 2,
                     new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
         }
         Rect[] facesArray = faces.toArray();
         for (int i = 0; i < facesArray.length; i++) {
             Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
 
-            //Core.putText(mRgba,"hello world", facesArray[i].tl(), FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
+            int RoiX = (int)Math.round(facesArray[i].tl().x);
+            int RoiY = (int)Math.round(facesArray[i].tl().y);
+            int RoiW = (int)Math.round(facesArray[i].br().x-facesArray[i].tl().x);
+            int RoiH = (int)Math.round(facesArray[i].br().y-facesArray[i].tl().y);
+
+            Rect rect = new Rect(RoiX, RoiY, RoiW, RoiH);
+            Mat imgRectROI= new Mat(mGray, rect);
+
+            //nodes
+            MatOfRect nodes = new MatOfRect();
+            double maxNodeSize = 0.5*RoiW;
+            double minNodeSize = 0.3*RoiW;
+            if (mNoseDetector.getDetecotr() != null){
+                mNoseDetector.getDetecotr().detectMultiScale(imgRectROI, nodes,
+                        1.1, 2, 2,
+                        new Size(minNodeSize, minNodeSize), new Size(maxNodeSize,maxNodeSize));
+            }
+
+            Rect[] nodesArray = nodes.toArray();
+            if(nodesArray.length != 0) {
+                Point temp = new Point();
+                temp.x = (nodesArray[0].tl().x + nodesArray[0].br().x) / 2 + RoiX;
+                temp.y = (nodesArray[0].tl().y + nodesArray[0].br().y) / 2 + RoiY;
+                Core.circle(mRgba, temp, 15, FACE_RECT_COLOR, 15);
+            }
+
+            MatOfRect eyes = new MatOfRect();
+            double maxEyeSize = 0.5*RoiW;
+            double minEyeSize = 0.3*RoiW;
+            if (mEyeDetector.getDetecotr() != null) {
+                mEyeDetector.getDetecotr().detectMultiScale(imgRectROI, eyes, 1.1, 2, 2,
+                    new Size(minEyeSize, minEyeSize), new Size(maxEyeSize, maxEyeSize));
+            }
+            Rect[] eyesArray = eyes.toArray();
+            for (int j = 0; j < eyesArray.length; j++) {
+                Point temp = new Point();
+                temp.x = (eyesArray[j].tl().x + eyesArray[j].br().x)/2+RoiX;
+                temp.y = (eyesArray[j].tl().y + eyesArray[j].br().y)/2+RoiY;
+                Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+            }
+
+            MatOfRect mouths = new MatOfRect();
+            double maxMouthSize = 0.6*RoiW;
+            double minMouthSize = 0.1*RoiW;
+            if (mMouthDetector.getDetecotr() != null){
+                mMouthDetector.getDetecotr().detectMultiScale(imgRectROI, mouths, 1.1, 2, 2,
+                        new Size(minMouthSize, minMouthSize), new Size(maxMouthSize ,maxMouthSize));
+            }
+
+            Rect[] mouthsArray = mouths.toArray();
+            if(mouthsArray.length != 0) {
+                Point temp = new Point();
+                temp.x = (mouthsArray[0].tl().x + mouthsArray[0].br().x)/2+RoiX;
+                temp.y = (mouthsArray[0].tl().y + mouthsArray[0].br().y)/2+RoiY;
+                Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+            }
+
+
         }
-
-
-
-//        MatOfRect eyes = new MatOfRect();
-//        if (mEyeDetector.getDetecotr() != null) {
-//            mEyeDetector.getDetecotr().detectMultiScale(mGray, eyes, 1.1, 2, 2,
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//        Rect[] eyesArray = eyes.toArray();
-//        for (int i = 0; i < eyesArray.length; i++) {
-//            Point temp = new Point();
-//            temp.x = (eyesArray[i].tl().x + eyesArray[i].br().x)/2;
-//            temp.y = (eyesArray[i].tl().y + eyesArray[i].br().y)/2;
-//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//        }
-//
-//        MatOfRect nodes = new MatOfRect();
-//        if (mNoseDetector.getDetecotr() != null){
-//            mNoseDetector.getDetecotr().detectMultiScale(mGray, nodes, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//
-//        Rect[] nodesArray = nodes.toArray();
-//        for (int i = 0; i < nodesArray.length; i++) {
-//            Point temp = new Point();
-//            temp.x = (nodesArray[i].tl().x + nodesArray[i].br().x)/2;
-//            temp.y = (nodesArray[i].tl().y + nodesArray[i].br().y)/2;
-//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//        }
-//
-//        MatOfRect mouths = new MatOfRect();
-//        if (mMouthDetector.getDetecotr() != null){
-//            mMouthDetector.getDetecotr().detectMultiScale(mGray, mouths, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//
-//        Rect[] mouthsArray = mouths.toArray();
-//        for (int i = 0; i < mouthsArray.length; i++) {
-//            Point temp = new Point();
-//            temp.x = (mouthsArray[i].tl().x + mouthsArray[i].br().x)/2;
-//            temp.y = (mouthsArray[i].tl().y + mouthsArray[i].br().y)/2;
-//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//        }
-
-//        MatOfRect leftEar = new MatOfRect();
-//        if (mLeftEarDetector.getDetecotr() != null){
-//            mNoseDetector.getDetecotr().detectMultiScale(mGray, leftEar, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//
-//        Rect[] leftEarArray = leftEar.toArray();
-//        for (int i = 0; i < leftEarArray.length; i++) {
-//            Point temp = new Point();
-//            temp.x = (leftEarArray[i].tl().x + leftEarArray[i].br().x)/2;
-//            temp.y = (leftEarArray[i].tl().y + leftEarArray[i].br().y)/2;
-//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//        }
-//
-//        MatOfRect rightEar = new MatOfRect();
-//        if (mLeftEarDetector.getDetecotr() != null){
-//            mNoseDetector.getDetecotr().detectMultiScale(mGray, rightEar, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//
-//        Rect[] rightEarArray = rightEar.toArray();
-//        for (int i = 0; i < leftEarArray.length; i++) {
-//            Point temp = new Point();
-//            temp.x = (rightEarArray[i].tl().x + rightEarArray[i].br().x)/2;
-//            temp.y = (rightEarArray[i].tl().y + rightEarArray[i].br().y)/2;
-//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//        }
-
-//        MatOfRect leftEye = new MatOfRect();
-//        if (mLeftEarDetector.getDetecotr() != null){
-//            mNoseDetector.getDetecotr().detectMultiScale(mGray, leftEye, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//
-//        Rect[] leftEyeArray = leftEye.toArray();
-//        for (int i = 0; i < leftEyeArray.length; i++) {
-//            Point temp = new Point();
-//            temp.x = (leftEyeArray[i].tl().x + leftEyeArray[i].br().x)/2;
-//            temp.y = (leftEyeArray[i].tl().y + leftEyeArray[i].br().y)/2;
-//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//        }
-//
-//        MatOfRect rightEye = new MatOfRect();
-//        if (mLeftEarDetector.getDetecotr() != null){
-//            mNoseDetector.getDetecotr().detectMultiScale(mGray, rightEye, 1.1, 2, 2, // TODO: objdetect.CV_HAAR_SCALE_IMAGE
-//                    new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-//        }
-//
-//        Rect[] rightEyeArray = rightEye.toArray();
-//        for (int i = 0; i < rightEyeArray.length; i++) {
-//            Point temp = new Point();
-//            temp.x = (rightEyeArray[i].tl().x + rightEyeArray[i].br().x)/2;
-//            temp.y = (rightEyeArray[i].tl().y + rightEyeArray[i].br().y)/2;
-//            Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//        }
-
-
-
+            //Core.putText(mRgba,"hello world", facesArray[i].tl(), FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
         return mRgba;
     }
 }
