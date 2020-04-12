@@ -3,8 +3,16 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
+
         <com.example.faceregapp.PortraitCameraView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:id="@+id/face_detection_activity_surface_view" />
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/img_view"
+            android:visibility="invisible"/>
+
 </FrameLayout>

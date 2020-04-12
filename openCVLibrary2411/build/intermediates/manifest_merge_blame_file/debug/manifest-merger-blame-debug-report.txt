@@ -5,9 +5,9 @@
 5    android:versionName="2.4.11" >
 6
 7    <uses-sdk
-8        android:minSdkVersion="8"
+8        android:minSdkVersion="15"
 8-->E:\Android\FaceRegApp\openCVLibrary2411\src\main\AndroidManifest.xml
-9        android:targetSdkVersion="8" />
+9        android:targetSdkVersion="29" />
 9-->E:\Android\FaceRegApp\openCVLibrary2411\src\main\AndroidManifest.xml
 10
 11</manifest>

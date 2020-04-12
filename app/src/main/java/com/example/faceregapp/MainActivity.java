@@ -4,12 +4,14 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -26,17 +28,22 @@ import org.opencv.objdetect.CascadeClassifier;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.SurfaceView;
+import android.widget.ImageView;
 import android.widget.Toast;
 
-import static org.opencv.core.Core.FONT_HERSHEY_SIMPLEX;
+import com.tzutalin.dlib.FaceDet;
+import com.tzutalin.dlib.VisionDetRet;
 
 
-public class MainActivity extends Activity implements CvCameraViewListener2 {
+public class MainActivity extends Activity implements View.OnTouchListener ,CvCameraViewListener2 {
     private static final String  TAG              = "MainActivity";
     private Mat                  mRgba;
     private static final Scalar    FACE_RECT_COLOR     = new Scalar(0, 255, 0, 255);
@@ -47,8 +54,9 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     private JavaDetector mMouthDetector;
     private float                  mRelativeFaceSize   = 0.2f;
     private int                    mAbsoluteFaceSize   = 0;
-
+    private boolean isViewStart = true;
     private CameraBridgeViewBase mOpenCvCameraView;
+    private ImageView imgView;
 
     private BaseLoaderCallback  mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -98,6 +106,10 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_FRONT);
         mOpenCvCameraView.setCvCameraViewListener(this);
+        mOpenCvCameraView.setOnTouchListener(this);
+
+        imgView = (ImageView) findViewById(R.id.img_view);
+        imgView.setOnTouchListener(this);
     }
 
     @Override
@@ -213,10 +225,66 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                 temp.y = (mouthsArray[0].tl().y + mouthsArray[0].br().y)/2+RoiY;
                 Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
             }
-
-
         }
+
+//        int resizeRatio = 1;
+//        FaceDet faceDet = new FaceDet();
+//        Bitmap bitmapTemp = Bitmap.createBitmap(mRgba.cols(), mRgba.rows(), Bitmap.Config.ARGB_8888);
+//        Utils.matToBitmap(mGray, bitmapTemp);
+//        List<VisionDetRet> results = faceDet.detect(bitmapTemp);
+//        for (final VisionDetRet ret : results) {
+//            String label = ret.getLabel(); // If doing face detection, it will be 'Face'
+//            int rectLeft = ret.getLeft();
+//            int rectTop= ret.getTop();
+//            int rectRight = ret.getRight();
+//            int rectBottom = ret.getBottom();
+//            Point lt = new Point();
+//            Point br = new Point();
+//            lt.x = rectLeft;
+//            lt.x = rectTop;
+//            br.x = rectRight;
+//            br.y = rectBottom;
+//            Core.rectangle(mRgba, lt, br, FACE_RECT_COLOR, 3);
+//
+//            ArrayList<android.graphics.Point> landmarks = ret.getFaceLandmarks();
+//            for (android.graphics.Point point : landmarks) {
+//                int pointX = (int) (point.x * resizeRatio);
+//                int pointY = (int) (point.y * resizeRatio);
+//
+//                Point temp = new Point();
+//                temp.x = 100;
+//                temp.y = 300;
+//                Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
+//                // Get the point of the face landmarks
+//            }
+ //       }
             //Core.putText(mRgba,"hello world", facesArray[i].tl(), FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
         return mRgba;
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        Toast.makeText(this,"you touch me", 1).show();
+        if(isViewStart){
+            Log.d(TAG, "ouTouch: "+mGray.rows()+" "+mGray.cols());
+            try{
+                if(mGray.cols() > 0 && mGray.rows() > 0) {
+                    Bitmap bitmapTemp = Bitmap.createBitmap(mRgba.cols(), mRgba.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(mGray, bitmapTemp);
+                    imgView.setImageBitmap(bitmapTemp);
+                    imgView.setVisibility(ImageView.VISIBLE);
+                    mOpenCvCameraView.disableView();
+                    mOpenCvCameraView.setVisibility(View.INVISIBLE);
+                }
+            }catch (Exception ex){
+                Log.d(TAG, "onTouch: "+ex.getMessage());
+            }
+        }else {
+            mOpenCvCameraView.enableView();
+            imgView.setVisibility(ImageView.INVISIBLE);
+            mOpenCvCameraView.setVisibility(View.VISIBLE);
+        }
+        isViewStart = !isViewStart;
+        return false;
     }
 }
