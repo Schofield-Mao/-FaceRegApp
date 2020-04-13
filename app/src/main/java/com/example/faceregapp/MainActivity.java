@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +31,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.FileUtils;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -40,7 +42,10 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.tzutalin.dlib.FaceDet;
+import com.tzutalin.dlib.Constants;
 import com.tzutalin.dlib.VisionDetRet;
+
+import static org.opencv.core.Core.FONT_HERSHEY_SIMPLEX;
 
 
 public class MainActivity extends Activity implements View.OnTouchListener ,CvCameraViewListener2 {
@@ -110,6 +115,20 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
 
         imgView = (ImageView) findViewById(R.id.img_view);
         imgView.setOnTouchListener(this);
+
+
+//        final String targetPath = Constants.getFaceShapeModelPath();
+//        if (!new File(targetPath).exists()) {
+//            runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    Toast.makeText(MainActivity.this, "Copy landmark model to " + targetPath, Toast.LENGTH_SHORT).show();
+//                }
+//            });
+//            Log.d(TAG, "oncreate: copy: "+Constants.getFaceShapeModelPath());
+            //FileStorageHelper.copyFilesFromRaw(this, R.raw.shape_predictor_68_face_landmarks, targetPath);
+//        }
+//        Log.d(TAG, "oncreate: copy done: "+Constants.getFaceShapeModelPath());
     }
 
     @Override
@@ -165,100 +184,13 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
             mFaceDetector.getDetecotr().detectMultiScale(mGray, faces, 1.1, 3, 2,
                     new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
         }
-        Rect[] facesArray = faces.toArray();
-        for (int i = 0; i < facesArray.length; i++) {
-            Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
+//        Rect[] facesArray = faces.toArray();
+//        for (int i = 0; i < facesArray.length; i++) {
+//            Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
+//        }
 
-            int RoiX = (int)Math.round(facesArray[i].tl().x);
-            int RoiY = (int)Math.round(facesArray[i].tl().y);
-            int RoiW = (int)Math.round(facesArray[i].br().x-facesArray[i].tl().x);
-            int RoiH = (int)Math.round(facesArray[i].br().y-facesArray[i].tl().y);
-
-            Rect rect = new Rect(RoiX, RoiY, RoiW, RoiH);
-            Mat imgRectROI= new Mat(mGray, rect);
-
-            //nodes
-            MatOfRect nodes = new MatOfRect();
-            double maxNodeSize = 0.5*RoiW;
-            double minNodeSize = 0.3*RoiW;
-            if (mNoseDetector.getDetecotr() != null){
-                mNoseDetector.getDetecotr().detectMultiScale(imgRectROI, nodes,
-                        1.1, 2, 2,
-                        new Size(minNodeSize, minNodeSize), new Size(maxNodeSize,maxNodeSize));
-            }
-
-            Rect[] nodesArray = nodes.toArray();
-            if(nodesArray.length != 0) {
-                Point temp = new Point();
-                temp.x = (nodesArray[0].tl().x + nodesArray[0].br().x) / 2 + RoiX;
-                temp.y = (nodesArray[0].tl().y + nodesArray[0].br().y) / 2 + RoiY;
-                Core.circle(mRgba, temp, 15, FACE_RECT_COLOR, 15);
-            }
-
-            MatOfRect eyes = new MatOfRect();
-            double maxEyeSize = 0.5*RoiW;
-            double minEyeSize = 0.3*RoiW;
-            if (mEyeDetector.getDetecotr() != null) {
-                mEyeDetector.getDetecotr().detectMultiScale(imgRectROI, eyes, 1.1, 2, 2,
-                    new Size(minEyeSize, minEyeSize), new Size(maxEyeSize, maxEyeSize));
-            }
-            Rect[] eyesArray = eyes.toArray();
-            for (int j = 0; j < eyesArray.length; j++) {
-                Point temp = new Point();
-                temp.x = (eyesArray[j].tl().x + eyesArray[j].br().x)/2+RoiX;
-                temp.y = (eyesArray[j].tl().y + eyesArray[j].br().y)/2+RoiY;
-                Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-            }
-
-            MatOfRect mouths = new MatOfRect();
-            double maxMouthSize = 0.6*RoiW;
-            double minMouthSize = 0.1*RoiW;
-            if (mMouthDetector.getDetecotr() != null){
-                mMouthDetector.getDetecotr().detectMultiScale(imgRectROI, mouths, 1.1, 2, 2,
-                        new Size(minMouthSize, minMouthSize), new Size(maxMouthSize ,maxMouthSize));
-            }
-
-            Rect[] mouthsArray = mouths.toArray();
-            if(mouthsArray.length != 0) {
-                Point temp = new Point();
-                temp.x = (mouthsArray[0].tl().x + mouthsArray[0].br().x)/2+RoiX;
-                temp.y = (mouthsArray[0].tl().y + mouthsArray[0].br().y)/2+RoiY;
-                Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-            }
-        }
-
-//        int resizeRatio = 1;
-//        FaceDet faceDet = new FaceDet();
-//        Bitmap bitmapTemp = Bitmap.createBitmap(mRgba.cols(), mRgba.rows(), Bitmap.Config.ARGB_8888);
-//        Utils.matToBitmap(mGray, bitmapTemp);
-//        List<VisionDetRet> results = faceDet.detect(bitmapTemp);
-//        for (final VisionDetRet ret : results) {
-//            String label = ret.getLabel(); // If doing face detection, it will be 'Face'
-//            int rectLeft = ret.getLeft();
-//            int rectTop= ret.getTop();
-//            int rectRight = ret.getRight();
-//            int rectBottom = ret.getBottom();
-//            Point lt = new Point();
-//            Point br = new Point();
-//            lt.x = rectLeft;
-//            lt.x = rectTop;
-//            br.x = rectRight;
-//            br.y = rectBottom;
-//            Core.rectangle(mRgba, lt, br, FACE_RECT_COLOR, 3);
-//
-//            ArrayList<android.graphics.Point> landmarks = ret.getFaceLandmarks();
-//            for (android.graphics.Point point : landmarks) {
-//                int pointX = (int) (point.x * resizeRatio);
-//                int pointY = (int) (point.y * resizeRatio);
-//
-//                Point temp = new Point();
-//                temp.x = 100;
-//                temp.y = 300;
-//                Core.circle(mRgba,temp,15,FACE_RECT_COLOR, 15);
-//                // Get the point of the face landmarks
-//            }
- //       }
-            //Core.putText(mRgba,"hello world", facesArray[i].tl(), FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
+        Point temp = new Point(1,1);
+        Core.putText(mRgba,"happy: ", temp, FONT_HERSHEY_SIMPLEX, 3, FACE_RECT_COLOR);
         return mRgba;
     }
 
@@ -266,25 +198,64 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
     public boolean onTouch(View v, MotionEvent event) {
         Toast.makeText(this,"you touch me", 1).show();
         if(isViewStart){
-            Log.d(TAG, "ouTouch: "+mGray.rows()+" "+mGray.cols());
             try{
-                if(mGray.cols() > 0 && mGray.rows() > 0) {
-                    Bitmap bitmapTemp = Bitmap.createBitmap(mRgba.cols(), mRgba.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(mGray, bitmapTemp);
+                Mat img = mRgba;
+                if(img.cols() > 0 && img.rows() > 0) {
+                    processImage(img);
+                    Bitmap bitmapTemp = Bitmap.createBitmap(img.cols(), img.rows(), Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(img, bitmapTemp);
                     imgView.setImageBitmap(bitmapTemp);
                     imgView.setVisibility(ImageView.VISIBLE);
                     mOpenCvCameraView.disableView();
                     mOpenCvCameraView.setVisibility(View.INVISIBLE);
+                    isViewStart = !isViewStart;
+                    Log.d(TAG, "ouTouch: stop on preview");
                 }
             }catch (Exception ex){
-                Log.d(TAG, "onTouch: "+ex.getMessage());
+                Log.e(TAG, "onTouch: "+ex.getMessage());
             }
         }else {
             mOpenCvCameraView.enableView();
             imgView.setVisibility(ImageView.INVISIBLE);
             mOpenCvCameraView.setVisibility(View.VISIBLE);
+            isViewStart = !isViewStart;
+            Log.d(TAG, "ouTouch: set on preview");
         }
-        isViewStart = !isViewStart;
-        return false;
+
+
+        return true;
+    }
+
+    private Mat processImage(Mat img){
+        int resizeRatio = 1;
+        FaceDet faceDet = new FaceDet(Constants.getFaceShapeModelPath());
+        Bitmap bitmapTemp = Bitmap.createBitmap(img.cols(), img.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(img, bitmapTemp);
+
+        long now = System.currentTimeMillis();
+        List<VisionDetRet> results = faceDet.detect(bitmapTemp);
+        Log.d(TAG, "processImage: cost: "+(System.currentTimeMillis()-now));
+        for (final VisionDetRet ret : results) {
+            String label = ret.getLabel(); // If doing face detection, it will be 'Face'
+            Log.d(TAG, "processImage: "+label);
+            int rectLeft = ret.getLeft();
+            int rectTop= ret.getTop();
+            int rectRight = ret.getRight();
+            int rectBottom = ret.getBottom();
+            Point lt = new Point();
+            Point br = new Point();
+            lt.x = rectLeft;
+            lt.y = rectTop;
+            br.x = rectRight;
+            br.y = rectBottom;
+            Log.d(TAG, "processImage: lt: "+lt.toString()+" br: "+br.toString());
+            ArrayList<android.graphics.Point> landmarks = ret.getFaceLandmarks();
+            for (android.graphics.Point point : landmarks) {
+                Point temp = new Point(point.x * resizeRatio, point.y * resizeRatio);
+                //Log.d(TAG, "processImage: landmark: "+temp.toString());
+                Core.circle(img, temp,3,FACE_RECT_COLOR, 6);
+            }
+        }
+        return img;
     }
 }
