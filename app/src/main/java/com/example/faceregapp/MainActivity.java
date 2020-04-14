@@ -53,6 +53,7 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
     private static final String  TAG              = "MainActivity";
     private Mat                  mRgba;
     private static final Scalar    FACE_RECT_COLOR     = new Scalar(0, 255, 0, 255);
+    private static final Scalar    FONT_COLOR     = new Scalar(255, 0, 0, 255);
     private Mat                    mGray;
     private JavaDetector mFaceDetector;
     private JavaDetector mEyeDetector;
@@ -239,15 +240,27 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
                 Core.putText(img, Integer.toString(i), temp, FONT_HERSHEY_SIMPLEX, 0.5, FACE_RECT_COLOR,2);
             }
 
-            Point explocat = new Point(100, 100);
-            if(isSuprise(landmarks)) {
-                Core.putText(img, "suprise! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FACE_RECT_COLOR, 10);
+            Point explocat = lt;
+            if(isCalm(landmarks)){
+                if(isDisgust(landmarks)){
+                    Core.putText(img, "disgust! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
+                }else if(isSad(landmarks)){
+                    Core.putText(img, "sad! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
+                }else if(isSmile(landmarks)){
+                    Core.putText(img, "smile! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
+                }else {
+                    Core.putText(img, "calm! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
+                }
+            }else if(isSuprise(landmarks)) {
+                Core.putText(img, "suprise! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
             }else if(isAngry(landmarks)) {
-                Core.putText(img, "angry! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FACE_RECT_COLOR, 10);
+                Core.putText(img, "angry! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
+            }else if(isScared(landmarks)){
+                Core.putText(img, "scared ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
             }else if(isHappy(landmarks)) {
-                Core.putText(img, "happy! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FACE_RECT_COLOR, 10);
+                Core.putText(img, "happy! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
             }else {
-                Core.putText(img, "calm! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FACE_RECT_COLOR, 10);
+                Core.putText(img, "none! ", explocat, FONT_HERSHEY_SIMPLEX, 5, FONT_COLOR, 10);
             }
         }
         return img;
@@ -308,6 +321,100 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
         p2 = landmakrs.get(24);
         Log.d(TAG, "isAngry k2: "+(float)(p2.y-p1.y)/(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
         if((float)(p2.y-p1.y)/(p2.x-p1.x)>-0.15){
+            return false;
+        }
+        return true;
+    }
+
+    boolean isCalm(ArrayList<android.graphics.Point> landmakrs){
+        //suprise:61,62,63,67,66,65
+        android.graphics.Point p1,p2,p3,p4,p5,p6;
+        p1 = landmakrs.get(61);
+        p2 = landmakrs.get(67);
+        p3 = landmakrs.get(66);
+        p4 = landmakrs.get(62);
+        p5 = landmakrs.get(63);
+        p6 = landmakrs.get(65);
+        Log.d(TAG, "isCalm k1: "+(float)Math.abs(p2.y-p1.y)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        Log.d(TAG, "isCalm k2: "+(float)Math.abs(p4.y-p3.y)+" p3: "+p3.toString()+" p4: "+p4.toString());
+        Log.d(TAG, "isCalm k3: "+(float)Math.abs(p6.y-p5.y)+" p5: "+p5.toString()+" p6: "+p6.toString());
+        if( Math.abs(p2.y-p1.y)>15 || Math.abs(p3.y-p4.y)>15 || Math.abs(p5.y-p6.y)>15){
+            return false;
+        }
+        return true;
+    }
+
+    boolean isSad(ArrayList<android.graphics.Point> landmakrs){
+        //suprise:21,22,31,35
+        android.graphics.Point p1,p2,p3,p4;
+        p1 = landmakrs.get(21);
+        p2 = landmakrs.get(22);
+        p3 = landmakrs.get(31);
+        p4 = landmakrs.get(35);
+        Log.d(TAG, "isSad k1: "+(float)Math.abs(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        Log.d(TAG, "isSad k2: "+(float)Math.abs(p3.x-p4.x)+" p3: "+p3.toString()+" p4: "+p4.toString());
+        if( (float)Math.abs(p2.x-p1.x)/Math.abs(p3.x-p4.x)>0.5){
+            return false;
+        }
+        return true;
+    }
+
+    boolean isSmile(ArrayList<android.graphics.Point> landmakrs){
+        //suprise:48,54,57:48,60,54,64
+        android.graphics.Point p1,p2;
+        p1 = landmakrs.get(48);
+        p2 = landmakrs.get(57);
+        Log.d(TAG, "isHappy k1: "+(float)(p2.y-p1.y)/(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        if((float)(p2.y-p1.y)/(p2.x-p1.x)<0.15){
+            return false;
+        }
+        p1 = landmakrs.get(57);
+        p2 = landmakrs.get(54);
+        Log.d(TAG, "isHappy k2: "+(float)(p2.y-p1.y)/(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        if((float)(p2.y-p1.y)/(p2.x-p1.x)>-0.15){
+            return false;
+        }
+        p1 = landmakrs.get(48);
+        p2 = landmakrs.get(60);
+        Log.d(TAG, "isHappy k3: "+Math.abs(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        if(Math.abs(p2.y-p1.y)<5){
+            return false;
+        }
+        p1 = landmakrs.get(54);
+        p2 = landmakrs.get(64);
+        Log.d(TAG, "isHappy k4: "+Math.abs(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        if(Math.abs(p2.y-p1.y)<5){
+            return false;
+        }
+        return true;
+    }
+
+    boolean isDisgust(ArrayList<android.graphics.Point> landmakrs){
+        //suprise:48,50,52,54
+        android.graphics.Point p1,p2;
+        p1 = landmakrs.get(48);
+        p2 = landmakrs.get(50);
+        Log.d(TAG, "isDisgust k1: "+(float)(p2.y-p1.y)/(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        if((float)(p2.y-p1.y)/(p2.x-p1.x)>-0.2){
+            return false;
+        }
+        p1 = landmakrs.get(52);
+        p2 = landmakrs.get(54);
+        Log.d(TAG, "isDisgust k2: "+(float)(p2.y-p1.y)/(p2.x-p1.x)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        if((float)(p2.y-p1.y)/(p2.x-p1.x)<0.2){
+            return false;
+        }
+        return true;
+    }
+
+    boolean isScared(ArrayList<android.graphics.Point> landmakrs){
+        //suprise:20,44,46
+        android.graphics.Point p1,p2,p3;
+        p1 = landmakrs.get(24);
+        p2 = landmakrs.get(44);
+        p3 = landmakrs.get(46);
+        Log.d(TAG, "isScared k1: "+(float)Math.abs(p2.y-p1.y)/Math.abs(p2.y-p3.y)+" p1: "+p1.toString()+" p2: "+p2.toString());
+        if((float)Math.abs(p2.y-p1.y)/Math.abs(p2.y-p3.y)>3.5){
             return false;
         }
         return true;
