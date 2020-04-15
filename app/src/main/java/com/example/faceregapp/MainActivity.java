@@ -33,6 +33,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.FileUtils;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -183,6 +184,10 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
+        Vibrator vibrator = (Vibrator)this.getSystemService(this.VIBRATOR_SERVICE);
+        vibrator.vibrate(10);
+
+        ProcessBar
 
         if(event.getAction() == MotionEvent.ACTION_DOWN) {
             Toast.makeText(this, "you touch me", 1).show();
