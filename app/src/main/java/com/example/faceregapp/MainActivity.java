@@ -29,6 +29,7 @@ import org.opencv.ml.CvSVM;
 import org.opencv.ml.CvStatModel;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -41,6 +42,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.SurfaceView;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.tzutalin.dlib.FaceDet;
@@ -56,35 +58,17 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
     private static final Scalar    FACE_RECT_COLOR     = new Scalar(0, 255, 0, 255);
     private static final Scalar    FONT_COLOR     = new Scalar(255, 0, 0, 255);
     private Mat                    mGray;
-    private JavaDetector mFaceDetector;
-    private JavaDetector mEyeDetector;
-    private JavaDetector mNoseDetector;
-    private JavaDetector mMouthDetector;
-    private float                  mRelativeFaceSize   = 0.2f;
-    private int                    mAbsoluteFaceSize   = 0;
     private boolean isViewStart = true;
     private CameraBridgeViewBase mOpenCvCameraView;
     private ImageView imgView;
-
+    private Vibrator mVibrator;
+    private FaceDet mFaceDet;
     private BaseLoaderCallback  mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS: {
                     Log.i(TAG, "OpenCV loaded successfully");
-                    mFaceDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_frontalface_default),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_frontalface_default.xml");
-
-                    mEyeDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_eye),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_eye.xml");
-                    mNoseDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_nose),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_mcs_nose.xml");
-                    mMouthDetector = new JavaDetector(getResources().openRawResource(R.raw.haarcascade_mcs_mouth),
-                            getDir("cascade", Context.MODE_PRIVATE),
-                            "haarcascade_mcs_mouth.xml");
                     mOpenCvCameraView.enableView();
                     break;
                 }
@@ -118,6 +102,15 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
 
         imgView = (ImageView) findViewById(R.id.img_view);
         imgView.setOnTouchListener(this);
+        mVibrator = (Vibrator)this.getSystemService(this.VIBRATOR_SERVICE);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                mFaceDet = new FaceDet(Constants.getFaceShapeModelPath());
+            }
+        }).run();
+
 
     }
 
@@ -184,19 +177,16 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        Vibrator vibrator = (Vibrator)this.getSystemService(this.VIBRATOR_SERVICE);
-        vibrator.vibrate(10);
 
-        ProcessBar
+        mVibrator.vibrate(10);
 
         if(event.getAction() == MotionEvent.ACTION_DOWN) {
-            Toast.makeText(this, "you touch me", 1).show();
             if (isViewStart) {
                 try {
                     Mat img = mRgba.clone();
                     mRgba.copyTo(img);
                     if (img.cols() > 0 && img.rows() > 0) {
-
+                        Toast.makeText(this, "开始表情分析...", Toast.LENGTH_SHORT).show();
                         processImage(img);
                         Bitmap bitmapTemp = Bitmap.createBitmap(img.cols(), img.rows(), Bitmap.Config.ARGB_8888);
                         Utils.matToBitmap(img, bitmapTemp);
@@ -206,6 +196,8 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
                         mOpenCvCameraView.setVisibility(View.INVISIBLE);
                         isViewStart = !isViewStart;
                         Log.d(TAG, "ouTouch: stop on preview");
+                    }else {
+                        Toast.makeText(this, "照相机未准备好...", Toast.LENGTH_SHORT).show();
                     }
                 } catch (Exception ex) {
                     Log.e(TAG, "onTouch: " + ex.getMessage());
@@ -215,6 +207,7 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
                 imgView.setVisibility(ImageView.INVISIBLE);
                 mOpenCvCameraView.setVisibility(View.VISIBLE);
                 isViewStart = !isViewStart;
+                Toast.makeText(this, "恢复人像采集...", Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "ouTouch: set on preview");
             }
 
@@ -223,12 +216,12 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
     }
 
     private Mat processImage(Mat img){
-        FaceDet faceDet = new FaceDet(Constants.getFaceShapeModelPath());
+
         Bitmap bitmapTemp = Bitmap.createBitmap(img.cols(), img.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(img, bitmapTemp);
 
         long now = System.currentTimeMillis();
-        List<VisionDetRet> results = faceDet.detect(bitmapTemp);
+        List<VisionDetRet> results = mFaceDet.detect(bitmapTemp);
         Log.d(TAG, "processImage: cost: "+(System.currentTimeMillis()-now));
 
         for (final VisionDetRet ret : results) {
