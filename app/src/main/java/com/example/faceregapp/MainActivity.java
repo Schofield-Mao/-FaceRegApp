@@ -1,5 +1,7 @@
 package com.example.faceregapp;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,9 +18,12 @@ import org.opencv.core.Scalar;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -28,6 +33,9 @@ import android.view.WindowManager;
 import android.view.SurfaceView;
 import android.widget.ImageView;
 import android.widget.Toast;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.tzutalin.dlib.FaceDet;
 import com.tzutalin.dlib.Constants;
@@ -64,6 +72,35 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
         }
     };
 
+
+    // Storage Permissions
+    private static final int REQUEST_EXTERNAL_STORAGE = 1;
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+
+    /**
+     * Checks if the app has permission to write to device storage
+     *
+     * If the app does not has permission then the user will be prompted to grant permissions
+     *
+     * @param activity
+     */
+    public static void verifyStoragePermissions(Activity activity) {
+        // Check if we have write permission
+        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    activity,
+                    PERMISSIONS_STORAGE,
+                    REQUEST_EXTERNAL_STORAGE
+            );
+        }
+    }
+
     public MainActivity() {
         Log.i(TAG, "Instantiated new " + this.getClass());
     }
@@ -71,20 +108,42 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
+
         Log.i(TAG, "called onCreate");
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.main_activity);
-
-        new Thread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        mFaceDet = new FaceDet(Constants.getFaceShapeModelPath());
-                    }
-                }).start();
+        verifyStoragePermissions(this);
+//        new Thread(
+//                new Runnable() {
+//                    @Override
+//                    public void run() {
+                        try{
+                            File sdcard = Environment.getExternalStorageDirectory();
+                            File file = new File(sdcard.getAbsolutePath() + File.separator + "shumei.txt");
+                            Log.i(TAG, sdcard.getAbsolutePath() + File.separator + "shumei.txt");
+                            Log.i(TAG, "ttttttttttttttttttttttttt shumei.txt");
+                            FileInputStream is = new FileInputStream(file);
+                            Log.i(TAG, "hhhhhhhhhhhhhhhhhhhhhhhhh shumei.txt");
+                            byte[] tempbytes = new byte[1024];
+                            Log.i(TAG, "shumei.txt before read");
+                            while (is.read(tempbytes) != -1){
+                                Log.i(TAG, "shumei.txt byte: " + new String(tempbytes));
+                            }
+                            Log.i(TAG, "shumei.txt after read");
+                            mFaceDet = new FaceDet(Constants.getFaceShapeModelPath());
+                            if(file.exists()){
+                                Log.i(TAG, "model exist: " + Constants.getFaceShapeModelPath());
+                            }else {
+                                Log.i(TAG, "model not exist: " + Constants.getFaceShapeModelPath());
+                            }
+                        }catch (Exception ex){
+                            Log.i(TAG, "load model: " + ex.getMessage());
+                        }
+//                    }
+//                }).start();
 
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.face_detection_activity_surface_view);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
@@ -196,7 +255,10 @@ public class MainActivity extends Activity implements View.OnTouchListener ,CvCa
             Point br = new Point(ret.getRight(), ret.getBottom());
             Log.d(TAG, "processImage: lt: "+lt.toString()+" br: "+br.toString());
             ArrayList<android.graphics.Point> landmarks = ret.getFaceLandmarks();
-
+            if(landmarks.size() < 68){
+                Log.d(TAG, "processImage exception: "+landmarks.size());
+                continue;
+            }
             for (int i=0;i<landmarks.size();i++) {
                 Point temp = new Point(landmarks.get(i).x, landmarks.get(i).y);
                 Core.putText(img, Integer.toString(i), temp, FONT_HERSHEY_SIMPLEX, 0.5, FACE_RECT_COLOR,2);
